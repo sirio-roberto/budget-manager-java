@@ -3,15 +3,16 @@ package budget;
 import java.util.LinkedHashSet;
 import java.util.Scanner;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class BudgetManagerApp {
     private final Scanner scan = new Scanner(System.in);
-    private final Set<Product> products;
+    private final Set<Purchase> purchases;
     private double income;
     private boolean isRunning;
 
     public BudgetManagerApp() {
-        this.products = new LinkedHashSet<>();
+        this.purchases = new LinkedHashSet<>();
         income = 0.0;
     }
 
@@ -47,9 +48,9 @@ public class BudgetManagerApp {
                 0) Exit""");
     }
 
-    private double getTotal() {
-        return products.stream()
-                .map(Product::getPrice)
+    private double getTotal(Set<Purchase> purchases) {
+        return purchases.stream()
+                .map(Purchase::getPrice)
                 .reduce(Double::sum)
                 .orElse(0.0);
     }
@@ -86,15 +87,45 @@ public class BudgetManagerApp {
 
         @Override
         void execute() {
-            System.out.println("Enter purchase name:");
-            String name = scan.nextLine();
-            System.out.println("Enter its price:");
-            double price = Double.parseDouble(scan.nextLine());
+            String userOption;
+            do {
+                System.out.println("""
+                        Choose the type of purchase
+                        1) Food
+                        2) Clothes
+                        3) Entertainment
+                        4) Other
+                        5) Back""");
+                userOption = scan.nextLine();
 
-            products.add(new Product(name, price));
-            income -= price;
-            System.out.println("Purchase was added!");
+                if ("5".equals(userOption)) {
+                    break;
+                }
+
+                Purchase.Category category = getCategoryFromOption(userOption);
+                System.out.println("\nEnter purchase name:");
+                String name = scan.nextLine();
+                System.out.println("Enter its price:");
+                double price = Double.parseDouble(scan.nextLine());
+
+                purchases.add(new Purchase(name, price, category));
+                income -= price;
+                System.out.println("Purchase was added!");
+
+                System.out.println();
+            } while (true);
+
         }
+    }
+
+    private Purchase.Category getCategoryFromOption(String userOption) {
+        return switch (userOption) {
+            case "1" -> Purchase.Category.Food;
+            case "2" -> Purchase.Category.Clothes;
+            case "3" -> Purchase.Category.Entertainment;
+            case "4" -> Purchase.Category.Other;
+            default -> Purchase.Category.All;
+        };
     }
 
     private class ListPurchasesCommand extends Command {
@@ -105,13 +136,52 @@ public class BudgetManagerApp {
 
         @Override
         void execute() {
-            if (products.size() > 0) {
-                products.forEach(System.out::println);
-                System.out.printf("Total sum: $%.2f\n", getTotal());
+            if (purchases.size() > 0) {
+                String userOption;
+                do {
+                    System.out.println("""
+                        Choose the type of purchases
+                        1) Food
+                        2) Clothes
+                        3) Entertainment
+                        4) Other
+                        5) All
+                        6) Back""");
+
+                    userOption = scan.nextLine();
+
+                    if ("6".equals(userOption)) {
+                        break;
+                    }
+
+                    Purchase.Category category = getCategoryFromOption(userOption);
+                    System.out.println();
+                    System.out.println(category + ":");
+
+                    if (category == Purchase.Category.All) {
+                        purchases.forEach(System.out::println);
+                        System.out.printf("Total sum: $%.2f\n", getTotal(purchases));
+                    } else {
+                        Set<Purchase> catPurchases = getPurchasesByCategory(category);
+                        if (catPurchases.isEmpty()) {
+                            System.out.println("The purchase list is empty");
+                        } else {
+                            catPurchases.forEach(System.out::println);
+                            System.out.printf("Total sum: $%.2f\n", getTotal(catPurchases));
+                        }
+                    }
+                    System.out.println();
+                } while (true);
             } else {
                 System.out.println("The purchase list is empty");
             }
         }
+    }
+
+    private Set<Purchase> getPurchasesByCategory(Purchase.Category category) {
+        return purchases.stream()
+                .filter(p -> p.getCategory() == category)
+                .collect(Collectors.toSet());
     }
 
     private class ShowBalanceCommand extends Command {

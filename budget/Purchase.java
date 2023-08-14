@@ -1,14 +1,22 @@
 package budget;
 
+import java.util.EnumSet;
 import java.util.Objects;
 
-public class Product {
+public class Purchase {
     private String name;
     private double price;
 
-    public Product(String name, double price) {
+    private Category category;
+
+    public Purchase(String name, double price) {
         this.name = name;
         this.price = price;
+    }
+
+    public Purchase(String name, double price, Category category) {
+        this(name, price);
+        this.category = category;
     }
 
     public String getName() {
@@ -19,12 +27,16 @@ public class Product {
         return price;
     }
 
+    public Category getCategory() {
+        return category;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        Product product = (Product) o;
-        return Objects.equals(name, product.name);
+        Purchase purchase = (Purchase) o;
+        return Objects.equals(name, purchase.name);
     }
 
     @Override
@@ -35,5 +47,9 @@ public class Product {
     @Override
     public String toString() {
         return String.format("%s $%.2f", name, price);
+    }
+
+    public enum Category {
+        Food, Clothes, Entertainment, Other, All
     }
 }
