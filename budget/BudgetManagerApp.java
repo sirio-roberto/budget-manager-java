@@ -1,5 +1,8 @@
 package budget;
 
+import com.google.gson.Gson;
+
+import java.io.*;
 import java.util.LinkedHashSet;
 import java.util.Scanner;
 import java.util.Set;
@@ -7,6 +10,7 @@ import java.util.stream.Collectors;
 
 public class BudgetManagerApp {
     private final Scanner scan = new Scanner(System.in);
+    private final String FILE_PATH = "purchases.txt";
     private final Set<Purchase> purchases;
     private double income;
     private boolean isRunning;
@@ -30,21 +34,24 @@ public class BudgetManagerApp {
 
     private Command getCommandFromUserInput(String userAction) {
         return switch (userAction) {
-            case "1" -> new AddIncomeCommand("addIncome");
-            case "2" -> new AddPurchaseCommand("addPurchase");
-            case "3" -> new ListPurchasesCommand("listPurchases");
-            case "4" -> new ShowBalanceCommand("showBalance");
-            default -> new ExitCommand("exit");
+            case "1" -> new AddIncomeCommand();
+            case "2" -> new AddPurchaseCommand();
+            case "3" -> new ListPurchasesCommand();
+            case "4" -> new ShowBalanceCommand();
+            case "5" -> new SaveCommand();
+            case "6" -> new LoadCommand();
+            default -> new ExitCommand();
         };
     }
 
     private void showMenu() {
         System.out.println("""
-                Choose your action:
                 1) Add income
                 2) Add purchase
                 3) Show list of purchases
                 4) Balance
+                5) Save
+                6) Load
                 0) Exit""");
     }
 
@@ -56,20 +63,13 @@ public class BudgetManagerApp {
     }
 
     abstract private static class Command {
-        private final String name;
-
-        public Command(String name) {
-            this.name = name;
+        public Command() {
         }
 
         abstract void execute();
     }
 
     private class AddIncomeCommand extends Command {
-
-        public AddIncomeCommand(String name) {
-            super(name);
-        }
 
         @Override
         void execute() {
@@ -80,10 +80,6 @@ public class BudgetManagerApp {
     }
 
     private class AddPurchaseCommand extends Command {
-
-        public AddPurchaseCommand(String name) {
-            super(name);
-        }
 
         @Override
         void execute() {
@@ -129,10 +125,6 @@ public class BudgetManagerApp {
     }
 
     private class ListPurchasesCommand extends Command {
-
-        public ListPurchasesCommand(String name) {
-            super(name);
-        }
 
         @Override
         void execute() {
@@ -185,22 +177,50 @@ public class BudgetManagerApp {
     }
 
     private class ShowBalanceCommand extends Command {
-
-        public ShowBalanceCommand(String name) {
-            super(name);
-        }
-
         @Override
         void execute() {
             System.out.printf("Balance: $%.2f\n", income);
         }
     }
 
-    private class ExitCommand extends Command {
+    private class SaveCommand extends Command {
 
-        public ExitCommand(String name) {
-            super(name);
+        @Override
+        void execute() {
+            try (BufferedWriter writer = new BufferedWriter(new FileWriter(FILE_PATH))) {
+                writer.write(String.valueOf(income));
+                writer.newLine();
+                for (Purchase p : purchases) {
+                    writer.write(new Gson().toJson(p));
+                    writer.newLine();
+                }
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            System.out.println("Purchases were saved!");
         }
+    }
+
+    private class LoadCommand extends Command {
+
+        @Override
+        void execute() {
+            try (BufferedReader reader = new BufferedReader(new FileReader(FILE_PATH))) {
+                String incomeStr;
+                if ((incomeStr = reader.readLine()) != null) {
+                    income = Double.parseDouble(incomeStr);
+                }
+                purchases.addAll(reader.lines()
+                        .map(l -> new Gson().fromJson(l, Purchase.class))
+                        .collect(Collectors.toSet()));
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            System.out.println("Purchases were loaded!");
+        }
+    }
+
+    private class ExitCommand extends Command {
 
         @Override
         void execute() {
